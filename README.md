@@ -128,7 +128,7 @@ docker run -p 5000:5000 shopping-assistant
 
 ## 📝 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+It is an Opensource application/Prject. You are allowed to use it for personal learning and use cases.
 
 ## 👥 Contact
 
