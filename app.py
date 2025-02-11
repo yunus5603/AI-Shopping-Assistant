@@ -12,7 +12,10 @@ class FlipkartAssistant:
         load_dotenv()
         
         # Initialize Flask app
-        self.app = Flask(__name__)
+        self.app = Flask(__name__,
+            static_folder='static',  # Define static folder
+            template_folder='templates'  # Define templates folder
+        )
         
         # Configure logging
         self._setup_logging()

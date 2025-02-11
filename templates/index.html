@@ -3,217 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flipkart Product Assistant</title>
-    
-    <!-- Bootstrap 5 and Font Awesome -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    
-    <!-- Custom CSS -->
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css')}}"/>
+    <title>Flipkart Shopping Assistant</title>
+    <link rel="stylesheet" href="static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
 </head>
-
 <body>
-    <div class="container-fluid h-100">
-        <div class="row justify-content-center h-100">        
-            <div class="col-md-8 col-xl-6 chat">
-                <div class="card">
-                    <!-- Chat Header -->
-                    <div class="card-header msg_head">
-                        <div class="d-flex align-items-center">
-                            <div class="img_cont">
-                                <img src="https://static.vecteezy.com/system/resources/previews/016/017/018/non_2x/ecommerce-icon-free-png.png" 
-                                     class="rounded-circle user_img" 
-                                     alt="Chatbot Avatar">
-                                <span class="online_icon"></span>
-                            </div>
-                            <div class="user_info ms-3">
-                                <h5 class="mb-1">Flipkart Product Assistant</h5>
-                                <p class="mb-0 text-muted"><small>Online | Ready to help</small></p>
-                            </div>
-                        </div>
-                        <!-- Added Settings Button -->
-                        <div class="chat_options">
-                            <button class="btn btn-link" title="Clear Chat" onclick="clearChat()">
-                                <i class="fas fa-trash-alt"></i>
-                            </button>
-                            <button class="btn btn-link" title="Settings">
-                                <i class="fas fa-cog"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Chat Messages Area -->
-                    <div id="messageFormeight" class="card-body msg_card_body">
-                        <!-- Welcome Message -->
-                        <div class="d-flex justify-content-start mb-4">
-                            <div class="img_cont_msg">
-                                <img src="https://static.vecteezy.com/system/resources/previews/016/017/018/non_2x/ecommerce-icon-free-png.png" 
-                                     class="rounded-circle user_img_msg" 
-                                     alt="Bot Avatar">
-                            </div>
-                            <div class="msg_cotainer">
-                                Hi! I'm your Flipkart Product Assistant. How can I help you today?
-                                <span class="msg_time">Now</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Input Area -->
-                    <div class="card-footer">
-                        <form id="messageArea" class="input-group">
-                            <button class="btn btn-link" type="button" title="Attach File">
-                                <i class="fas fa-paperclip"></i>
-                            </button>
-                            <input type="text" 
-                                   id="text" 
-                                   name="msg" 
-                                   class="form-control type_msg" 
-                                   placeholder="Ask about products, reviews, or recommendations..." 
-                                   autocomplete="off" 
-                                   required/>
-                            <button type="submit" id="send" class="btn btn-primary send_btn">
-                                <i class="fas fa-paper-plane"></i>
-                            </button>
-                        </form>
-                        <!-- Typing Indicator -->
-                        <div id="typing-indicator" class="typing-indicator d-none">
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                        </div>
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="header-content">
+                <div class="bot-avatar">
+                    <img src="https://cdn-icons-png.flaticon.com/512/4711/4711984.png" alt="AI Assistant">
+                </div>
+                <div class="user_info header-text">
+                    <h2 class="header-title">Flipkart Shopping Assistant</h2>
+                    <div class="status">
+                        <span class="status-dot"></span>
+                        Active Now
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+        
+        <div class="chat-messages">
+            <div class="message bot-message">
+                <div class="img_cont_msg">
+                    <img src="https://cdn-icons-png.flaticon.com/512/4711/4711984.png" 
+                         class="rounded-circle user_img_msg" 
+                         alt="Bot avatar">
+                </div>
+                <div class="message-content">
+                    Hi! I'm your personal shopping assistant. How can I help you today? 😊
+                    <div class="timestamp">Just now</div>
+                </div>
+            </div>
+        </div>
 
-    <!-- Scripts -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+        <div class="input-container">
+            <input type="text" placeholder="Ask about products, reviews, or recommendations...">
+            <button class="send-btn">
+                <span class="btn-text">Send</span>
+                <svg class="send-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                </svg>
+            </button>
+        </div>
+    </div>
     
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         $(document).ready(function() {
-            // Auto scroll to bottom on new messages
-            function scrollToBottom() {
-                const messageArea = document.getElementById('messageFormeight');
-                messageArea.scrollTop = messageArea.scrollHeight;
+            // Handle send button click
+            $('.send-btn').click(sendMessage);
+            
+            // Handle Enter key press
+            $('.input-container input').keypress(function(e) {
+                if (e.which == 13) {  // Enter key
+                    sendMessage();
+                }
+            });
+
+            function sendMessage() {
+                const userInput = $('.input-container input').val().trim();
+                if (!userInput) return;
+
+                // Clear input
+                $('.input-container input').val('');
+
+                // Add user message to chat
+                appendMessage('user', userInput);
+
+                // Send to backend
+                $.ajax({
+                    url: '/get',
+                    type: 'POST',
+                    data: { msg: userInput },
+                    success: function(response) {
+                        if (response) {
+                            appendMessage('bot', response);
+                        } else {
+                            appendMessage('bot', 'Received empty response from server');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error:', error);
+                        console.error('Status:', status);
+                        console.error('Response:', xhr.responseText);
+                        appendMessage('bot', 'Sorry, there was an error processing your request. Please try again.');
+                    }
+                });
             }
 
-            // Show typing indicator
-            function showTypingIndicator() {
-                $("#typing-indicator").removeClass("d-none");
-                scrollToBottom();
-            }
-
-            // Hide typing indicator
-            function hideTypingIndicator() {
-                $("#typing-indicator").addClass("d-none");
-            }
-
-            $("#messageArea").on("submit", function(event) {
-                event.preventDefault();
-                
-                const date = new Date();
-                const hour = date.getHours().toString().padStart(2, '0');
-                const minute = date.getMinutes().toString().padStart(2, '0');
-                const str_time = `${hour}:${minute}`;
-                
-                const rawText = $("#text").val().trim();
-                
-                if (!rawText) return; // Prevent empty messages
-
-                // User message HTML
-                const userHtml = `
-                    <div class="d-flex justify-content-end mb-4 message-container">
-                        <div class="msg_cotainer_send">
-                            ${escapeHtml(rawText)}
-                            <span class="msg_time_send">${str_time}</span>
-                        </div>
+            function appendMessage(sender, message) {
+                const time = 'Just now';
+                const messageHtml = `
+                    <div class="message ${sender}-message">
                         <div class="img_cont_msg">
-                            <img src="https://i.ibb.co/d5b84Xw/Untitled-design.png" 
-                                 class="rounded-circle user_img_msg" 
-                                 alt="User Avatar">
+                            <img src="${sender === 'bot' ? 
+                                'https://cdn-icons-png.flaticon.com/512/4711/4711984.png' : 
+                                'https://cdn-icons-png.flaticon.com/512/1077/1077114.png'}" 
+                                class="rounded-circle user_img_msg" alt="${sender} avatar">
+                        </div>
+                        <div class="message-content">
+                            ${formatMessage(message)}
+                            <div class="timestamp">${time}</div>
                         </div>
                     </div>`;
                 
-                $("#text").val("").focus();
-                $("#messageFormeight").append(userHtml);
-                scrollToBottom();
+                $('.chat-messages').append(messageHtml);
                 
-                // Show typing indicator before bot responds
-                showTypingIndicator();
-
-                // Ajax call to backend
-                $.ajax({
-                    data: { msg: rawText },
-                    type: "POST",
-                    url: "/get",
-                    success: function(data) {
-                        hideTypingIndicator();
-                        
-                        // Bot message HTML
-                        const botHtml = `
-                            <div class="d-flex justify-content-start mb-4 message-container">
-                                <div class="img_cont_msg">
-                                    <img src="https://static.vecteezy.com/system/resources/previews/016/017/018/non_2x/ecommerce-icon-free-png.png" 
-                                         class="rounded-circle user_img_msg" 
-                                         alt="Bot Avatar">
-                                </div>
-                                <div class="msg_cotainer">
-                                    ${data}
-                                    <span class="msg_time">${str_time}</span>
-                                </div>
-                            </div>`;
-                        
-                        $("#messageFormeight").append($.parseHTML(botHtml));
-                        scrollToBottom();
-                    },
-                    error: function() {
-                        hideTypingIndicator();
-                        // Show error message
-                        $("#messageFormeight").append(`
-                            <div class="d-flex justify-content-center mb-4">
-                                <div class="error-message">
-                                    Sorry, something went wrong. Please try again.
-                                </div>
-                            </div>`
-                        );
-                        scrollToBottom();
-                    }
-                });
-            });
-
-            // Escape HTML to prevent XSS
-            function escapeHtml(unsafe) {
-                return unsafe
-                    .replace(/&/g, "&amp;")
-                    .replace(/</g, "&lt;")
-                    .replace(/>/g, "&gt;")
-                    .replace(/"/g, "&quot;")
-                    .replace(/'/g, "&#039;");
+                // Scroll to bottom
+                $('.chat-messages').scrollTop($('.chat-messages')[0].scrollHeight);
             }
 
-            // Clear chat function
-            window.clearChat = function() {
-                if (confirm("Are you sure you want to clear the chat?")) {
-                    $("#messageFormeight").html('');
-                    // Add welcome message back
-                    $("#messageFormeight").append(`
-                        <div class="d-flex justify-content-start mb-4">
-                            <div class="img_cont_msg">
-                                <img src="https://static.vecteezy.com/system/resources/previews/016/017/018/non_2x/ecommerce-icon-free-png.png" 
-                                     class="rounded-circle user_img_msg" 
-                                     alt="Bot Avatar">
-                            </div>
-                            <div class="msg_cotainer">
-                                Hi! I'm your Flipkart Product Assistant. How can I help you today?
-                                <span class="msg_time">Now</span>
-                            </div>
-                        </div>
-                    `);
+            function formatMessage(message) {
+                if (typeof message !== 'string') {
+                    console.error('Invalid message format:', message);
+                    return 'Error: Invalid message format';
                 }
-            };
+                
+                // Convert bullet points to proper HTML lists
+                let formatted = message.replace(/\n\s*\*/g, '\n• ');
+                
+                // Convert important phrases in quotes to highlighted spans
+                formatted = formatted.replace(/"([^"]+)"/g, '<span class="highlight">$1</span>');
+                
+                // Convert newlines to <br> tags
+                formatted = formatted.replace(/\n/g, '<br>');
+                
+                return formatted;
+            }
         });
     </script>
 </body>

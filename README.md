@@ -1,126 +1,142 @@
-# Product Recommendation ChatBot 🛍️
+# 🛍️ AI Shopping Assistant
 
-A smart chatbot assistant that helps users find product recommendations based on Flipkart product reviews and ratings.
+[![Python](https://img.shields.io/badge/Python-3.8+-blue?logo=python&logoColor=white)](https://www.python.org/)
+[![LangChain](https://img.shields.io/badge/LangChain-Framework-blue?logo=chainlink&logoColor=white)](https://langchain.io/)
+[![Groq](https://img.shields.io/badge/Groq-LLM-orange?logo=transformer&logoColor=white)](https://www.groq.com/)
+[![Flask](https://img.shields.io/badge/Flask-Backend-green?logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
+[![AstraDB](https://img.shields.io/badge/AstraDB-Vector%20Store-purple?logo=apache-cassandra&logoColor=white)](https://www.datastax.com/products/datastax-astra)
+[![Docker](https://img.shields.io/badge/Docker-Containerized-blue?logo=docker&logoColor=white)](https://www.docker.com/)
+[![AWS](https://img.shields.io/badge/AWS-Cloud%20Deployed-orange?logo=amazon-aws&logoColor=white)](https://aws.amazon.com/)
 
-## 🌟 Features
+An intelligent e-commerce chatbot powered by LangChain and Groq LLM, providing personalized product recommendations and handling customer queries through natural conversation.
 
-- Interactive chat interface
-- Product recommendations based on user queries
-- Review analysis and summarization
-- Rating-based filtering
-- Real-time responses
-- Mobile-responsive design
+## 🌟 [Live Demo](https://yunus5603-chatsql-app-4qqccv.streamlit.app/)
+
+![Demo Screenshot](images/ChatBot.png)
+
+## 🎯 Key Features
+
+- 🤖 Natural language product recommendations
+- 💬 Context-aware conversation handling
+- 🔄 Real-time response streaming
+- 🎨 Modern, responsive UI design
+- 🔒 Secure API handling
+- 📊 Product review analysis
+- 🚀 AWS cloud deployment
+- 🐳 Docker containerization
 
 ## 🛠️ Technology Stack
 
-- **Backend**: Python, Flask
-- **Frontend**: HTML5, CSS3, JavaScript
-- **Database**: Astra DB (Vector Store)
-- **LLM Integration**: Groq
-- **Vector Embeddings**: HuggingFace
-- **Dependencies**: LangChain, Pandas
+### Core Components
+- **LLM**: Groq (llama-3.3-70b-versatile)
+- **Framework**: LangChain
+- **Vector Store**: AstraDB
+- **Backend**: Flask
+- **Frontend**: HTML/CSS/JavaScript
+- **Embeddings**: HuggingFace (BAAI/bge-base-en-v1.5)
+
+### Cloud & DevOps
+- **Cloud Platform**: AWS (ECR, EC2)
+- **Containerization**: Docker
+- **CI/CD**: GitHub Actions
+- **Version Control**: Git
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-
-- Python 3.10 or higher
-- Anaconda/Miniconda (recommended)
-- Groq API key
-- Astra DB account
-- HuggingFace API token
-
-### Environment Setup
-
-1. **Create and Activate Conda Environment**:
 ```bash
-# Create environment
-conda create -p <env_name> python=3.10 -y
-
-# Activate environment
-conda activate <env_path>
-
-# For bash terminal
-source activate ./<env_name>
+# Required environment variables
+GROQ_API_KEY=your_groq_api_key
+ASTRA_DB_API_ENDPOINT=your_astra_endpoint
+ASTRA_DB_APPLICATION_TOKEN=your_astra_token
+ASTRA_DB_KEYSPACE=your_keyspace
+HF_TOKEN=your_huggingface_token
 ```
 
-2. **Install Dependencies**:
+### Installation
+
+1. **Clone Repository**
+```bash
+git clone <repository-url>
+cd AI-Shopping-Assistant
+```
+
+2. **Create Virtual Environment**
+```bash
+conda create -p venv python==3.12
+conda activate venv/
+```
+
+3. **Install Dependencies**
 ```bash
 pip install -r requirements.txt
 ```
 
-3. **Install Local Package**:
-```bash
-python setup.py install
-```
-
-### Configuration
-
-Create a `.env` file in the root directory with the following variables:
-```env
-GROQ_API_KEY = "your_groq_api_key"
-ASTRA_DB_API_ENDPOINT = "your_astra_db_endpoint"
-ASTRA_DB_APPLICATION_TOKEN = "your_astra_db_token"
-ASTRA_DB_KEYSPACE = "your_keyspace"
-HF_TOKEN = "your_huggingface_token"
-```
-
-## 📂 Project Structure
-
-```
-flipkart/
-├── flipkart/
-│   ├── data_converter.py    # Data processing
-│   ├── data_ingestion.py    # Database operations
-│   └── retrieval_generation.py  # Chat logic
-├── static/
-│   └── style.css           # UI styling
-├── templates/
-│   ├── chat.html          # Chat interface
-│   ├── 404.html          # Error pages
-│   └── 500.html
-├── app.py                # Flask application
-└── requirements.txt      # Dependencies
-```
-
-## 🚀 Running the Application
-
-1. **Start the Flask Server**:
+4. **Run Application**
 ```bash
 python app.py
 ```
 
-2. **Access the Application**:
-- Open your browser and navigate to `http://localhost:5000`
-- Start chatting with the assistant!
+## 🏗️ Project Structure
 
-## 💬 Usage Examples
+```
+AI-Shopping-Assistant/
+├── flipkart/
+│   ├── data_converter.py      # Data preprocessing
+│   ├── data_ingestion.py      # Vector store management
+│   └── retrieval_generation.py # Chat logic & LLM integration
+├── static/
+│   └── css/
+│       └── style.css          # UI styling
+├── templates/
+│   └── index.html            # Chat interface
+├── app.py                    # Flask application
+├── Dockerfile               # Container configuration
+└── requirements.txt         # Dependencies
+```
 
-- "Can you recommend headphones with good bass?"
-- "What are the best budget earphones?"
-- "Show me reviews for BoAt Rockerz"
+## 🔄 Data Flow
+
+1. User sends message through chat interface
+2. Flask backend processes request
+3. LangChain creates context-aware query
+4. Vector store retrieves relevant product data
+5. Groq LLM generates personalized response
+6. Response streamed back to user interface
+
+## 🚀 Deployment
+
+### Local Deployment
+```bash
+docker build -t shopping-assistant .
+docker run -p 5000:5000 shopping-assistant
+```
+
+### AWS Deployment
+- Configure AWS credentials
+- Set up ECR repository
+- Configure GitHub Actions secrets
+- Push to main branch for automatic deployment
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit changes (`git commit -m 'Add AmazingFeature'`)
+4. Push to branch (`git push origin feature/AmazingFeature`)
+5. Open Pull Request
 
 ## 📝 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 👤 Author
+## 👥 Contact
 
-- **Yunus Shaikh**
-- Email: syunus838@gmail.com
+Yunus Shaikh - [syunus838@gmail.com](mailto:syunus838@gmail.com)
 
-## 🙏 Acknowledgments
+Project Link: [https://github.com/yunus5603/AI-Shopping-Assistant](https://github.com/yourusername/AI-Shopping-Assistant)
 
-- Flipkart for the product dataset
-- Groq for LLM API access
-- DataStax for Astra DB
-- HuggingFace for embeddings
+---
 
-## 📞 Support
-
-For support, email syunus838@gmail.com or open an issue in the repository.
+<p align="center">Made with ❤️ by Yunus Shaikh</p>
 

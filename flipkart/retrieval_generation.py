@@ -19,7 +19,7 @@ class ChatbotManager:
         # Initialize configuration
         self.config = {
             "groq_api_key": os.getenv("GROQ_API_KEY"),
-            "model_name": "llama-3.1-70b-versatile",
+            "model_name": "llama-3.3-70b-versatile",
             "temperature": 0.5
         }
         
@@ -46,8 +46,9 @@ class ChatbotManager:
         retriever = vstore.as_retriever(search_kwargs={"k": 3})
 
         retriever_prompt = (
-            "Given a chat history and the latest user question which might reference context in the chat history, "
-            "formulate a standalone question which can be understood without the chat history. "
+            "Given a chat history and the latest user question, formulate a search query that will help find relevant information. "
+            "If the question is about products or shopping, focus on those keywords. "
+            "If it's a general question, formulate it clearly while maintaining context. "
             "Do NOT answer the question, just reformulate it if needed and otherwise return it as is."
         )
 
@@ -66,10 +67,15 @@ class ChatbotManager:
     def _create_qa_chain(self) -> Any:
         """Create the question-answering chain."""
         PRODUCT_BOT_TEMPLATE = """
-        You are an expert ecommerce chatbot specializing in product recommendations and customer queries.
-        Analyze product titles and reviews to provide accurate and helpful responses.
-        Focus on relevant product information and avoid off-topic discussions.
-        Provide concise and informative answers based on the given context.
+        You are a helpful and knowledgeable e-commerce chatbot. Your primary expertise is in product recommendations and customer queries, 
+        but you can also engage in general conversation while staying professional.
+
+        When product-related context is available, use it to provide accurate recommendations and information.
+        When asked general questions:
+        - Provide helpful, concise responses
+        - Stay professional and friendly
+        - If the question is inappropriate or off-topic, politely guide the conversation back to shopping-related topics
+        - Maintain ethical boundaries and avoid harmful content
 
         CONTEXT:
         {context}

@@ -1,9 +1,14 @@
 import pandas as pd
 from langchain_core.documents import Document
+import os
 
 def dataconverter():
+    # Get absolute path to data file
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    data_path = os.path.join(os.path.dirname(current_dir), "data", "flipkart_product_review.csv")
+    
     # Read the CSV file
-    product_data = pd.read_csv(r"../data/flipkart_product_review.csv")
+    product_data = pd.read_csv(data_path)
 
     # Select relevant columns
     data = product_data[["product_title", "review", "rating", "summary"]]
