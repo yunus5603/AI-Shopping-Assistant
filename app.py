@@ -1,10 +1,13 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, Response, stream_with_context
 from flipkart.retrieval_generation import ChatbotManager
+from flipkart.callbacks import StreamingCallback
 from typing import Dict, Any
 import logging
 from logging.handlers import RotatingFileHandler
 import os
 from dotenv import load_dotenv
+import json
+from queue import Queue
 
 class FlipkartAssistant:
     def __init__(self):
@@ -62,28 +65,55 @@ class FlipkartAssistant:
 
         @self.app.route("/get", methods=["POST"])
         def chat():
-            """Handle chat messages."""
+            """Handle chat messages with streaming response."""
             try:
-                if request.method != "POST":
-                    return jsonify({"error": "Method not allowed"}), 405
-
                 msg = request.form.get("msg")
                 if not msg:
                     return jsonify({"error": "No message provided"}), 400
 
-                # Generate unique session ID (in production, this should come from user authentication)
-                session_id = request.remote_addr  # Simple example using IP address
+                self.app.logger.info(f"Received message: {msg}")
+                
+                # Create queue for streaming tokens
+                queue = Queue()
+                streaming_callback = StreamingCallback(queue)
 
-                # Get response from chatbot
-                response = self.conversation_chain.invoke(
-                    {"input": msg},
-                    config={"configurable": {"session_id": session_id}}
+                # Create conversation chain with streaming callback
+                conversation_chain = self.chatbot.create_conversation_chain(streaming_callback)
+
+                def generate():
+                    try:
+                        self.app.logger.info("Starting LLM generation")
+                        
+                        # Start LLM generation with the streaming-enabled chain
+                        conversation_chain.invoke(
+                            {"input": msg},
+                            config={
+                                "configurable": {"session_id": request.remote_addr}
+                            }
+                        )
+                        
+                        self.app.logger.info("LLM generation started")
+                        
+                        # Stream tokens as they come
+                        while True:
+                            token = queue.get(timeout=30)
+                            if token is None:  # End of streaming
+                                self.app.logger.info("Streaming completed")
+                                break
+                            yield f"data: {json.dumps({'token': token})}\n\n"
+                            
+                    except Exception as e:
+                        self.app.logger.error(f"Streaming error: {str(e)}")
+                        yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+                return Response(
+                    stream_with_context(generate()),
+                    mimetype='text/event-stream',
+                    headers={
+                        'Cache-Control': 'no-cache',
+                        'X-Accel-Buffering': 'no'
+                    }
                 )
-
-                if not response or "answer" not in response:
-                    raise ValueError("Invalid response from chatbot")
-
-                return response["answer"]
 
             except Exception as e:
                 self.app.logger.error(f'Error processing message: {str(e)}')

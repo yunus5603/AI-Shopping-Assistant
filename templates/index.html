@@ -72,25 +72,96 @@
                 // Add user message to chat
                 appendMessage('user', userInput);
 
-                // Send to backend
-                $.ajax({
-                    url: '/get',
-                    type: 'POST',
-                    data: { msg: userInput },
-                    success: function(response) {
-                        if (response) {
-                            appendMessage('bot', response);
-                        } else {
-                            appendMessage('bot', 'Received empty response from server');
-                        }
-                    },
-                    error: function(xhr, status, error) {
-                        console.error('Error:', error);
-                        console.error('Status:', status);
-                        console.error('Response:', xhr.responseText);
-                        appendMessage('bot', 'Sorry, there was an error processing your request. Please try again.');
+                // Create message container for bot response
+                const botMessageId = 'bot-message-' + Date.now();
+                appendEmptyBotMessage(botMessageId);
+
+                // Create FormData
+                const formData = new FormData();
+                formData.append('msg', userInput);
+
+                // Create fetch request
+                fetch('/get', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    const reader = response.body.getReader();
+
+                    function readStream() {
+                        return reader.read().then(({done, value}) => {
+                            if (done) {
+                                return;
+                            }
+                            
+                            // Convert the chunk to text
+                            const chunk = new TextDecoder().decode(value);
+                            const lines = chunk.split('\n');
+                            
+                            // Process each line
+                            lines.forEach(line => {
+                                if (line.startsWith('data: ')) {
+                                    try {
+                                        const data = JSON.parse(line.slice(6));
+                                        if (data.token) {
+                                            // Instead of concatenating to fullResponse, 
+                                            // directly update the message
+                                            updateBotMessage(botMessageId, data.token);
+                                        }
+                                    } catch (e) {
+                                        console.error('Error parsing JSON:', e);
+                                    }
+                                }
+                            });
+
+                            return readStream();
+                        });
                     }
+
+                    return readStream();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    updateBotMessage(botMessageId, 'Sorry, there was an error processing your request.');
                 });
+            }
+
+            function appendEmptyBotMessage(messageId) {
+                const messageHtml = `
+                    <div class="message bot-message" id="${messageId}">
+                        <div class="img_cont_msg">
+                            <img src="https://cdn-icons-png.flaticon.com/512/4711/4711984.png" 
+                                 class="rounded-circle user_img_msg" 
+                                 alt="Bot avatar">
+                        </div>
+                        <div class="message-content">
+                            <div class="typing-indicator">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                            <div class="timestamp">Just now</div>
+                        </div>
+                    </div>`;
+                
+                $('.chat-messages').append(messageHtml);
+                scrollToBottom();
+            }
+
+            function updateBotMessage(messageId, token) {
+                const messageElement = $(`#${messageId} .message-content`);
+                // Remove typing indicator if present
+                messageElement.find('.typing-indicator').remove();
+                // Append new token
+                if (!messageElement.find('.message-text').length) {
+                    messageElement.prepend('<div class="message-text"></div>');
+                }
+                messageElement.find('.message-text').append(token);
+                scrollToBottom();
+            }
+
+            function scrollToBottom() {
+                $('.chat-messages').scrollTop($('.chat-messages')[0].scrollHeight);
             }
 
             function appendMessage(sender, message) {
@@ -134,5 +205,30 @@
             }
         });
     </script>
+
+    <style>
+        /* Add typing indicator animation */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 8px;
+        }
+
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out;
+        }
+
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+    </style>
 </body>
 </html>

@@ -6,8 +6,11 @@ from langchain_groq import ChatGroq
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_core.chat_history import BaseChatMessageHistory
+from flipkart.callbacks import StreamingCallback
 from flipkart.data_ingestion import DataIngestionManager
-from typing import Dict, Any
+from typing import Dict, Any, Optional, List
+from queue import Queue
 from dotenv import load_dotenv
 import os
 
@@ -26,10 +29,12 @@ class ChatbotManager:
         # Initialize chat store
         self.store: Dict[str, BaseChatMessageHistory] = {}
         
-        # Initialize LLM
+        # Initialize LLM with streaming enabled
         self.model = ChatGroq(
             model=self.config["model_name"],
-            temperature=self.config["temperature"]
+            temperature=self.config["temperature"],
+            streaming=True,  # Enable streaming
+            callbacks=[]  # Will be set during invocation
         )
         
         # Initialize data manager
@@ -64,9 +69,52 @@ class ChatbotManager:
             contextualize_q_prompt
         )
 
-    def _create_qa_chain(self) -> Any:
-        """Create the question-answering chain."""
-        PRODUCT_BOT_TEMPLATE = """
+    def create_conversation_chain(self, streaming_callback: Optional[StreamingCallback] = None) -> RunnableWithMessageHistory:
+        """
+        Create the complete conversation chain.
+        
+        Args:
+            streaming_callback: Optional callback for streaming tokens
+        """
+        # Update model callbacks if streaming is requested
+        if streaming_callback:
+            self.model.callbacks = [streaming_callback]
+        
+        # Get vector store
+        vstore, _ = self.data_manager.ingest_data(True)
+        
+        # Create retriever and QA chains
+        history_aware_retriever = self._create_retriever_chain(vstore)
+        
+        # Create QA chain with streaming configuration
+        qa_prompt = ChatPromptTemplate.from_messages([
+            ("system", self._create_system_prompt()),
+            MessagesPlaceholder(variable_name="chat_history"),
+            ("human", "{input}")
+        ])
+        
+        question_answer_chain = create_stuff_documents_chain(
+            self.model,
+            qa_prompt,
+            document_variable_name="context"
+        )
+        
+        # Create retrieval chain
+        rag_chain = create_retrieval_chain(
+            retriever=history_aware_retriever,
+            combine_docs_chain=question_answer_chain,
+        )
+
+        return RunnableWithMessageHistory(
+            rag_chain,
+            self.get_session_history,
+            input_messages_key="input",
+            history_messages_key="chat_history",
+            output_messages_key="answer"
+        )
+
+    def _create_system_prompt(self) -> str:
+        return """
         You are a helpful and knowledgeable e-commerce chatbot. Your primary expertise is in product recommendations and customer queries, 
         but you can also engage in general conversation while staying professional.
 
@@ -84,38 +132,6 @@ class ChatbotManager:
 
         YOUR ANSWER:
         """
-
-        qa_prompt = ChatPromptTemplate.from_messages([
-            ("system", PRODUCT_BOT_TEMPLATE),
-            MessagesPlaceholder(variable_name="chat_history"),
-            ("human", "{input}")
-        ])
-
-        return create_stuff_documents_chain(self.model, qa_prompt)
-
-    def create_conversation_chain(self) -> RunnableWithMessageHistory:
-        """Create the complete conversation chain."""
-        # Get vector store
-        vstore, _ = self.data_manager.ingest_data(True)
-        
-        # Create retriever and QA chains
-        history_aware_retriever = self._create_retriever_chain(vstore)
-        question_answer_chain = self._create_qa_chain()
-        
-        # Create retrieval chain
-        rag_chain = create_retrieval_chain(
-            history_aware_retriever,
-            question_answer_chain
-        )
-
-        # Create conversational chain with message history
-        return RunnableWithMessageHistory(
-            rag_chain,
-            self.get_session_history,
-            input_messages_key="input",
-            history_messages_key="chat_history",
-            output_messages_key="answer"
-        )
 
 def main():
     # Initialize chatbot manager

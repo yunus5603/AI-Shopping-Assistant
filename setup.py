@@ -20,5 +20,9 @@ setup(
     author="Yunus Shaikh",
     author_email="syunus838@gmail.com",
     packages=find_packages(),
-    install_requires=get_requirements()
+    install_requires=get_requirements(),
+    package_data={
+        'flipkart': ['*.py'],  # Include all Python files in flipkart directory
+    },
+    python_requires='>=3.8',  # Specify minimum Python version
 )

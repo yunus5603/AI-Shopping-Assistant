@@ -13,6 +13,7 @@ project_name = "flipkart"
 # Define project structure
 list_of_files = [
     f"{project_name}/__init__.py",
+    f"{project_name}/callbacks.py",
     f"{project_name}/data_converter.py",
     f"{project_name}/data_ingestion.py",
     f"{project_name}/retrieval_generation.py",
@@ -22,8 +23,8 @@ list_of_files = [
     "app.py",
     "requirements.txt",
     ".env",
-    "README.md"
-
+    "README.md",
+    "logs/.gitkeep"
 ]
 
 # Create project structure

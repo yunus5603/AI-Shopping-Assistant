@@ -134,7 +134,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 Yunus Shaikh - [syunus838@gmail.com](mailto:syunus838@gmail.com)
 
-Project Link: [https://github.com/yunus5603/AI-Shopping-Assistant](https://github.com/yourusername/AI-Shopping-Assistant)
+Project Link: [https://github.com/yunus5603/AI-Shopping-Assistant](https://github.com/yunus5603/AI-Shopping-Assistant)
 
 ---
 
