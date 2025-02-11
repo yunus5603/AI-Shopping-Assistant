@@ -1,0 +1,5 @@
+myenv
+.env
+flipkart.egg-info
+data
+aws.md
