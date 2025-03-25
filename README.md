@@ -10,7 +10,7 @@
 
 An intelligent e-commerce chatbot powered by LangChain and Groq LLM, providing personalized product recommendations and handling customer queries through natural conversation.
 
-## 🌟 [Live Demo](https://yunus5603-chatsql-app-4qqccv.streamlit.app/)
+## 🌟 [Live Demo]()
 
 ![Demo Screenshot](images/ChatBot.png)
 
