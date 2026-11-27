@@ -25,36 +25,19 @@ It also covers the full delivery loop: tests and lint gate every change, and pus
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    subgraph Offline ingestion
-        CSV[(Flipkart reviews CSV)] --> Conv[data_converter<br/>clean rows → Documents]
-        Conv --> Emb[HF embeddings<br/>bge-base-en-v1.5]
-        Emb --> Astra[(AstraDB<br/>vector store)]
-    end
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/architecture-dark.svg">
+  <img alt="Architecture: the chat UI sends a question to the Flask API, a LangChain chain rewrites follow-ups, retrieves similar reviews from AstraDB and asks Groq Llama 3.3 for a cited answer, which streams back over SSE. Offline, the reviews CSV is cleaned, embedded and loaded into AstraDB." src="docs/diagrams/architecture-light.svg" width="100%">
+</picture>
 
-    subgraph Request path
-        UI[Browser chat UI] -- POST /get --> Flask[Flask + Gunicorn]
-        Flask --> Mem[(Session memory)]
-        Flask --> Rephrase[Rewrite follow-up<br/>into standalone query<br/>Groq, temp 0]
-        Rephrase --> Ret[Top-k retrieval]
-        Ret --> Astra
-        Ret --> Answer[Grounded answer<br/>with citations<br/>Groq Llama 3.3 70B]
-        Answer -- SSE: sources, tokens --> UI
-    end
-```
+Each request is one pass through the chain. On follow-up turns the question is first rewritten into a standalone search query using the chat history; on the first turn that step is skipped. Retrieved reviews are numbered so the answer can cite them, and the browser receives the sources before the first token.
 
 ### CI/CD
 
-```mermaid
-flowchart LR
-    PR[Pull request] --> Test[Ruff + pytest]
-    Push[Push to main] --> Test
-    Test --> Build[Docker build]
-    Build -->|main only| ECR[Push image to ECR<br/>tagged latest + SHA]
-    ECR --> EC2[Self-hosted runner on EC2<br/>replace container]
-    EC2 --> Smoke[Smoke test /health]
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/cicd-dark.svg">
+  <img alt="CI/CD: every pull request and push runs lint, tests and a Docker build; pushes to main then push the image to ECR, deploy it to EC2 and smoke-test /health." src="docs/diagrams/cicd-light.svg" width="100%">
+</picture>
 
 ## Evaluation
 
