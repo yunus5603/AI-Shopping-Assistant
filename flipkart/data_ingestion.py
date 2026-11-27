@@ -1,92 +1,103 @@
-from langchain_astradb import AstraDBVectorStore
-from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
+"""Embed product reviews and store them in AstraDB.
+
+Run ``python -m flipkart.data_ingestion`` once to load the CSV into the
+vector store. The web app only reads from the store.
+"""
+
+from __future__ import annotations
+
 import os
-from flipkart.data_converter import dataconverter
-from typing import Optional, Tuple, List
-from langchain_core.documents import Document
+from dataclasses import dataclass, field
+
 from dotenv import load_dotenv
+from langchain_core.documents import Document
+from langchain_core.vectorstores import VectorStore
 
-class DataIngestionManager:
-    def __init__(self):
-        # Load environment variables
+from flipkart.data_converter import dataconverter
+
+EMBEDDING_MODEL = "BAAI/bge-base-en-v1.5"
+DEFAULT_COLLECTION = "Recommendation_chatbot"
+
+
+@dataclass
+class AstraConfig:
+    api_endpoint: str
+    token: str
+    keyspace: str | None
+    hf_token: str
+    collection_name: str = DEFAULT_COLLECTION
+    embedding_model: str = EMBEDDING_MODEL
+
+    @classmethod
+    def from_env(cls) -> AstraConfig:
         load_dotenv()
-        
-        # Initialize configuration
-        self.config = {
-            "groq_api_key": os.getenv("GROQ_API_KEY"),
-            "astra_db_api_endpoint": os.getenv("ASTRA_DB_API_ENDPOINT"),
-            "astra_db_token": os.getenv("ASTRA_DB_APPLICATION_TOKEN"),
-            "astra_db_keyspace": os.getenv("ASTRA_DB_KEYSPACE"),
-            "hf_token": os.getenv("HF_TOKEN"),
-            "collection_name": "Recommendation_chatbot"
+        required = {
+            "ASTRA_DB_API_ENDPOINT": os.getenv("ASTRA_DB_API_ENDPOINT"),
+            "ASTRA_DB_APPLICATION_TOKEN": os.getenv("ASTRA_DB_APPLICATION_TOKEN"),
+            "HF_TOKEN": os.getenv("HF_TOKEN"),
         }
-        
-        # Initialize embedding model
-        self.embedding = HuggingFaceInferenceAPIEmbeddings(
-            api_key=self.config["hf_token"],
-            model_name="BAAI/bge-base-en-v1.5"
+        missing = [name for name, value in required.items() if not value]
+        if missing:
+            raise RuntimeError(
+                f"Missing environment variables: {', '.join(missing)}. Copy .env.example to .env."
+            )
+        return cls(
+            api_endpoint=required["ASTRA_DB_API_ENDPOINT"],
+            token=required["ASTRA_DB_APPLICATION_TOKEN"],
+            keyspace=os.getenv("ASTRA_DB_KEYSPACE") or None,
+            hf_token=required["HF_TOKEN"],
+            collection_name=os.getenv("ASTRA_DB_COLLECTION", DEFAULT_COLLECTION),
         )
-        
-        # Initialize vector store
-        self.vector_store = self._initialize_vector_store()
 
-    def _initialize_vector_store(self) -> AstraDBVectorStore:
-        """Initialize the AstraDB vector store with configuration."""
+
+@dataclass
+class DataIngestionManager:
+    """Owns the vector store. Pass ``vector_store`` to skip AstraDB (tests, local runs)."""
+
+    config: AstraConfig | None = None
+    vector_store: VectorStore | None = field(default=None)
+
+    def __post_init__(self) -> None:
+        if self.vector_store is None:
+            self.config = self.config or AstraConfig.from_env()
+            self.vector_store = self._connect(self.config)
+
+    @staticmethod
+    def _connect(config: AstraConfig) -> VectorStore:
+        # Imported lazily so tests and tooling don't need the AstraDB client.
+        from langchain_astradb import AstraDBVectorStore
+        from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
+
+        embedding = HuggingFaceInferenceAPIEmbeddings(
+            api_key=config.hf_token, model_name=config.embedding_model
+        )
         return AstraDBVectorStore(
-            embedding=self.embedding,
-            collection_name=self.config["collection_name"],
-            api_endpoint=self.config["astra_db_api_endpoint"],
-            token=self.config["astra_db_token"],
-            namespace=self.config["astra_db_keyspace"]
+            embedding=embedding,
+            collection_name=config.collection_name,
+            api_endpoint=config.api_endpoint,
+            token=config.token,
+            namespace=config.keyspace,
         )
 
-    def ingest_data(self, status: Optional[bool] = None) -> Tuple[AstraDBVectorStore, Optional[List[str]]]:
-        """
-        Ingest data into AstraDB vector store.
-        
-        Args:
-            status: Flag to determine if data should be ingested or just return vector store
-            
-        Returns:
-            Tuple containing vector store and optionally inserted document IDs
-        """
-        if status is None:
-            # Convert and ingest new data
-            docs = dataconverter()
-            insert_ids = self.vector_store.add_documents(docs)
-            return self.vector_store, insert_ids
-        
-        return self.vector_store, None
+    def ingest(self, docs: list[Document] | None = None) -> list[str]:
+        """Embed and insert documents (defaults to the full review CSV)."""
+        docs = dataconverter() if docs is None else docs
+        return self.vector_store.add_documents(docs)
 
-    def search_similar_products(self, query: str, k: int = 4) -> List[Document]:
-        """
-        Search for similar products based on query.
-        
-        Args:
-            query: Search query string
-            k: Number of results to return
-            
-        Returns:
-            List of similar documents
-        """
+    def retriever(self, k: int = 4):
+        return self.vector_store.as_retriever(search_kwargs={"k": k})
+
+    def search_similar_products(self, query: str, k: int = 4) -> list[Document]:
         return self.vector_store.similarity_search(query, k=k)
 
-def main():
-    # Initialize manager
+
+def main() -> None:
     manager = DataIngestionManager()
-    
-    # Ingest data and get vector store
-    vstore, insert_ids = manager.ingest_data(None)
-    
-    if insert_ids:
-        print(f"\nInserted {len(insert_ids)} documents.")
-    
-    # Example search
-    results = manager.search_similar_products("looking for budget headphones with good bass")
-    for result in results:
-        print(f"Review: {result.page_content}")
-        print(f"Product: {result.metadata['product_name']}")
-        print(f"Rating: {result.metadata['rating']}")
+    ids = manager.ingest()
+    print(f"Inserted {len(ids)} reviews into '{manager.config.collection_name}'.")
+    for doc in manager.search_similar_products("budget headphones with good bass"):
+        print(f"- {doc.metadata['product_name']} ({doc.metadata['rating']}): {doc.page_content[:80]}")
+
 
 if __name__ == "__main__":
     main()
