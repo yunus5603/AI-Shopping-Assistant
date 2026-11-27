@@ -1,142 +1,166 @@
 # 🛍️ AI Shopping Assistant
 
-[![Python](https://img.shields.io/badge/Python-3.8+-blue?logo=python&logoColor=white)](https://www.python.org/)
-[![LangChain](https://img.shields.io/badge/LangChain-Framework-blue?logo=chainlink&logoColor=white)](https://langchain.io/)
-[![Groq](https://img.shields.io/badge/Groq-LLM-orange?logo=transformer&logoColor=white)](https://www.groq.com/)
-[![Flask](https://img.shields.io/badge/Flask-Backend-green?logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
-[![AstraDB](https://img.shields.io/badge/AstraDB-Vector%20Store-purple?logo=apache-cassandra&logoColor=white)](https://www.datastax.com/products/datastax-astra)
-[![Docker](https://img.shields.io/badge/Docker-Containerized-blue?logo=docker&logoColor=white)](https://www.docker.com/)
-[![AWS](https://img.shields.io/badge/AWS-Cloud%20Deployed-orange?logo=amazon-aws&logoColor=white)](https://aws.amazon.com/)
+[![CI/CD](https://github.com/yunus5603/AI-Shopping-Assistant/actions/workflows/main.yaml/badge.svg)](https://github.com/yunus5603/AI-Shopping-Assistant/actions/workflows/main.yaml)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
+[![LangChain](https://img.shields.io/badge/LangChain-RAG-1C3C3C?logo=langchain&logoColor=white)](https://python.langchain.com/)
+[![Groq](https://img.shields.io/badge/Groq-Llama%203.3%2070B-F55036)](https://groq.com/)
+[![AstraDB](https://img.shields.io/badge/AstraDB-Vector%20Store-7B2FBE?logo=datastax&logoColor=white)](https://www.datastax.com/products/datastax-astra)
+[![AWS](https://img.shields.io/badge/AWS-ECR%20%2B%20EC2-FF9900?logo=amazonaws&logoColor=white)](https://aws.amazon.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-An intelligent e-commerce chatbot powered by LangChain and Groq LLM, providing personalized product recommendations and handling customer queries through natural conversation.
+A retrieval-augmented (RAG) shopping assistant that answers product questions from **real Flipkart customer reviews**. It remembers the conversation, streams answers token by token, and shows the exact reviews each answer is based on, with numbered citations.
 
-## 🌟 [Live Demo]()
+It also covers the full delivery loop: tests and lint gate every change, and pushes to `main` build a Docker image, push it to Amazon ECR and roll it out to EC2 with a health-checked deploy.
 
-![Demo Screenshot](images/ChatBot.png)
+![Chat UI](images/ChatBot.png)
 
-## 🎯 Key Features
+## Highlights
 
-- 🤖 Natural language product recommendations
-- 💬 Context-aware conversation handling
-- 🔄 Real-time response streaming
-- 🎨 Modern, responsive UI design
-- 🔒 Secure API handling
-- 📊 Product review analysis
-- 🚀 AWS cloud deployment
-- 🐳 Docker containerization
+- **Grounded answers with citations.** Retrieved reviews are numbered `[1]`, `[2]`… in the prompt, the model cites them, and the UI lists them under each answer. The prompt tells the model to say when the reviews don't cover a question rather than invent specs or prices.
+- **Conversation memory.** Follow-ups like *"how is its battery?"* are rewritten into a standalone search query using the chat history before retrieval. Memory is per browser session (signed cookie), trimmed to recent turns and bounded across sessions.
+- **True streaming.** Tokens are streamed from the LLM to the browser over Server-Sent Events while they are generated. Sources arrive first, then the answer.
+- **Measured, not guessed.** An evaluation harness scores retrieval hit rate, faithfulness and relevance (LLM judge), citation validity and out-of-scope refusals against a golden question set.
+- **Tested without API keys.** 30+ pytest tests run the real LangChain pipeline with fake LLMs and retrievers, so CI needs no secrets.
+- **Production basics.** Gunicorn, health endpoint, non-root container, input limits, no internal errors leaked to users, and model output rendered as text only (no HTML injection).
 
-## 🛠️ Technology Stack
+## Architecture
 
-### Core Components
-- **LLM**: Groq (llama-3.3-70b-versatile)
-- **Framework**: LangChain
-- **Vector Store**: AstraDB
-- **Backend**: Flask
-- **Frontend**: HTML/CSS/JavaScript
-- **Embeddings**: HuggingFace (BAAI/bge-base-en-v1.5)
+```mermaid
+flowchart LR
+    subgraph Offline ingestion
+        CSV[(Flipkart reviews CSV)] --> Conv[data_converter<br/>clean rows → Documents]
+        Conv --> Emb[HF embeddings<br/>bge-base-en-v1.5]
+        Emb --> Astra[(AstraDB<br/>vector store)]
+    end
 
-### Cloud & DevOps
-- **Cloud Platform**: AWS (ECR, EC2)
-- **Containerization**: Docker
-- **CI/CD**: GitHub Actions
-- **Version Control**: Git
-
-## 🚀 Quick Start
-
-### Prerequisites
-```bash
-# Required environment variables
-GROQ_API_KEY=your_groq_api_key
-ASTRA_DB_API_ENDPOINT=your_astra_endpoint
-ASTRA_DB_APPLICATION_TOKEN=your_astra_token
-ASTRA_DB_KEYSPACE=your_keyspace
-HF_TOKEN=your_huggingface_token
+    subgraph Request path
+        UI[Browser chat UI] -- POST /get --> Flask[Flask + Gunicorn]
+        Flask --> Mem[(Session memory)]
+        Flask --> Rephrase[Rewrite follow-up<br/>into standalone query<br/>Groq, temp 0]
+        Rephrase --> Ret[Top-k retrieval]
+        Ret --> Astra
+        Ret --> Answer[Grounded answer<br/>with citations<br/>Groq Llama 3.3 70B]
+        Answer -- SSE: sources, tokens --> UI
+    end
 ```
 
-### Installation
+### CI/CD
 
-1. **Clone Repository**
+```mermaid
+flowchart LR
+    PR[Pull request] --> Test[Ruff + pytest]
+    Push[Push to main] --> Test
+    Test --> Build[Docker build]
+    Build -->|main only| ECR[Push image to ECR<br/>tagged latest + SHA]
+    ECR --> EC2[Self-hosted runner on EC2<br/>replace container]
+    EC2 --> Smoke[Smoke test /health]
+```
+
+## Evaluation
+
+`eval/golden_set.jsonl` holds in-scope questions (bass, battery, mic quality, comfort, complaints…) and out-of-scope ones (laptops, fridges, trivia) that the assistant should decline.
+
 ```bash
-git clone <repository-url>
+python -m eval.run_eval          # writes eval/results/latest.json and prints a table
+```
+
+| Metric | What it checks |
+|---|---|
+| Retrieval hit rate / precision @k | Do the top-k reviews actually mention what was asked about? |
+| Faithfulness (LLM judge, 1–5) | Is every claim in the answer supported by the retrieved reviews? |
+| Answer relevance (LLM judge, 1–5) | Does the answer address the question? |
+| Citation rate / validity | Does the answer cite sources, and do the numbers point at real ones? |
+| Out-of-scope refusal rate | Does it decline questions the reviews can't answer? |
+
+<!-- Paste the table printed by `python -m eval.run_eval` here after a run. -->
+
+## Design decisions and trade-offs
+
+| Decision | Why | Trade-off |
+|---|---|---|
+| Reviews are the retrieval unit (one document per review) | Answers can cite a specific customer's words | Many near-duplicate reviews per product; aggregating per product would give broader coverage |
+| Separate temperature-0 call to rewrite follow-ups | Retrieval sees "boAt Airdopes battery", not "how is its battery?" | One extra LLM call on follow-up turns (skipped on the first turn) |
+| Groq-hosted Llama 3.3 70B | Very low latency, which matters for a streaming chat | Tied to one provider; the model is injectable, so swapping is a constructor argument |
+| AstraDB serverless vectors | Managed, free tier, no infra to run | Network hop per query; FAISS/Chroma would be faster for a static dataset |
+| In-memory session store, one Gunicorn worker | Simple and fast for a demo | Memory is lost on restart and doesn't scale across workers; Redis would fix both |
+| Keyword-based retrieval check plus LLM judge | Cheap, transparent and runnable in minutes | Keyword relevance is coarse; RAGAS or human labels would be more precise |
+
+## Quick start
+
+**Requirements:** Python 3.10+, and free accounts for [Groq](https://console.groq.com/keys), [AstraDB](https://astra.datastax.com) and [Hugging Face](https://huggingface.co/settings/tokens).
+
+```bash
+git clone https://github.com/yunus5603/AI-Shopping-Assistant.git
 cd AI-Shopping-Assistant
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt
+cp .env.example .env            # fill in your keys
 ```
 
-2. **Create Virtual Environment**
+Put the review dataset at `data/flipkart_product_review.csv` (columns `product_title, rating, summary, review`), or point `PRODUCT_DATA_PATH` at it. Then load it into AstraDB once and start the app:
+
 ```bash
-conda create -p venv python==3.12
-conda activate venv/
+python -m flipkart.data_ingestion   # embed and store the reviews
+python app.py                       # http://localhost:5000
 ```
 
-3. **Install Dependencies**
-```bash
-pip install -r requirements.txt
-```
+### Docker
 
-4. **Run Application**
-```bash
-python app.py
-```
-
-## 🏗️ Project Structure
-
-```
-AI-Shopping-Assistant/
-├── flipkart/
-│   ├── data_converter.py      # Data preprocessing
-│   ├── data_ingestion.py      # Vector store management
-│   └── retrieval_generation.py # Chat logic & LLM integration
-├── static/
-│   └── css/
-│       └── style.css          # UI styling
-├── templates/
-│   └── index.html            # Chat interface
-├── app.py                    # Flask application
-├── Dockerfile               # Container configuration
-└── requirements.txt         # Dependencies
-```
-
-## 🔄 Data Flow
-
-1. User sends message through chat interface
-2. Flask backend processes request
-3. LangChain creates context-aware query
-4. Vector store retrieves relevant product data
-5. Groq LLM generates personalized response
-6. Response streamed back to user interface
-
-## 🚀 Deployment
-
-### Local Deployment
 ```bash
 docker build -t shopping-assistant .
-docker run -p 5000:5000 shopping-assistant
+docker run --env-file .env -p 5000:5000 shopping-assistant
 ```
 
-### AWS Deployment
-- Configure AWS credentials
-- Set up ECR repository
-- Configure GitHub Actions secrets
-- Push to main branch for automatic deployment
+### Tests and lint
 
-## 🤝 Contributing
+```bash
+pytest                 # no API keys needed
+ruff check . && ruff format --check .
+```
 
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit changes (`git commit -m 'Add AmazingFeature'`)
-4. Push to branch (`git push origin feature/AmazingFeature`)
-5. Open Pull Request
+## API
 
-## 📝 License
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/` | Chat UI |
+| `POST` | `/get` | Form field `msg` (max 1000 chars). Returns `text/event-stream` with `{"sources": [...]}`, then `{"token": "..."}` events, then `{"done": true}` |
+| `POST` | `/reset` | Clears this browser's conversation memory |
+| `GET` | `/health` | Liveness check used by Docker and the deploy smoke test |
 
-It is an Opensource application/Prject. You are allowed to use it for personal learning and use cases.
+## Project structure
 
-## 👥 Contact
+```
+├── app.py                        # Flask app factory, SSE endpoint, sessions
+├── flipkart/
+│   ├── data_converter.py         # CSV → cleaned LangChain Documents
+│   ├── data_ingestion.py         # Embeddings + AstraDB vector store, ingestion CLI
+│   └── retrieval_generation.py   # History-aware RAG chain, citations, session memory
+├── eval/
+│   ├── golden_set.jsonl          # Evaluation questions
+│   ├── metrics.py                # Scoring helpers
+│   └── run_eval.py               # Evaluation runner
+├── tests/                        # pytest suite (fake LLM + retriever)
+├── static/ , templates/          # Chat UI
+├── Dockerfile
+└── .github/workflows/main.yaml   # Lint/test → build → ECR → EC2
+```
 
-Yunus Shaikh - [syunus838@gmail.com](mailto:syunus838@gmail.com)
+## Deployment (AWS)
 
-Project Link: [https://github.com/yunus5603/AI-Shopping-Assistant](https://github.com/yunus5603/AI-Shopping-Assistant)
+Pushes to `main` deploy automatically once these repository secrets are set: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`, `ECR_REPOSITORY_NAME`, `AWS_ECR_LOGIN_URI`, `GROQ_API_KEY`, `ASTRA_DB_API_ENDPOINT`, `ASTRA_DB_APPLICATION_TOKEN`, `ASTRA_DB_KEYSPACE`, `HF_TOKEN` and `FLASK_SECRET_KEY`. The EC2 instance needs Docker and a [self-hosted GitHub Actions runner](https://docs.github.com/en/actions/hosting-your-own-runners).
 
----
+## Roadmap
 
-<p align="center">Made with ❤️ by Yunus Shaikh</p>
+- [ ] Hybrid search (BM25 + vectors) and a reranker
+- [ ] Per-product review aggregation (pros/cons summaries)
+- [ ] Redis-backed session memory for multi-worker deploys
+- [ ] Price and category filters through metadata
+- [ ] Always-on hosted demo (Render or Hugging Face Spaces)
 
+## Contributing
+
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) to get set up, and look for issues labelled `good first issue`.
+
+## License
+
+[MIT](LICENSE) © Yunus Shaikh

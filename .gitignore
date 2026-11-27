@@ -1,6 +1,27 @@
-myenv
+# Environments and secrets
 .env
-flipkart.egg-info
-data
+.venv/
+venv/
+myenv/
+etc/
+*.token
 aws.md
-logs
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Data and outputs
+data/
+logs/
+eval/results/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store

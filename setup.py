@@ -1,28 +1,20 @@
+from pathlib import Path
+
 from setuptools import find_packages, setup
-from typing import List
-import os
 
-def get_requirements() -> List[str]:
-    """Read requirements.txt file and return list of requirements."""
-    requirements_path = os.path.join(os.path.dirname(__file__), 'requirements.txt')
-    requirements = []
 
-    if os.path.exists(requirements_path):
-        with open(requirements_path) as f:
-            requirements = [req.strip() for req in f.readlines()]
-            requirements = [req for req in requirements if req and not req.startswith('#') and req != "-e ."]
+def get_requirements() -> list[str]:
+    path = Path(__file__).parent / "requirements.txt"
+    lines = (line.strip() for line in path.read_text().splitlines()) if path.exists() else ()
+    return [line for line in lines if line and not line.startswith(("#", "-"))]
 
-    return requirements
 
 setup(
-    name="flipkart",
-    version="0.0.1",
+    name="flipkart-shopping-assistant",
+    version="0.2.0",
     author="Yunus Shaikh",
-    author_email="syunus838@gmail.com",
-    packages=find_packages(),
+    description="RAG shopping assistant over Flipkart product reviews",
+    packages=find_packages(include=["flipkart", "flipkart.*"]),
     install_requires=get_requirements(),
-    package_data={
-        'flipkart': ['*.py'],  # Include all Python files in flipkart directory
-    },
-    python_requires='>=3.8',  # Specify minimum Python version
+    python_requires=">=3.10",
 )
