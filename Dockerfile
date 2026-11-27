@@ -1,43 +1,32 @@
-# Use Python slim image for smaller size
-FROM python:3.10-slim-buster as builder
+FROM python:3.12-slim
 
-# Set working directory
-WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        build-essential \
-        curl \
-        awscli \
-        ffmpeg \
-        libsm6 \
-        libxext6 \
-        unzip \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy application code
-COPY . .
-
-# Create non-root user for security
-RUN useradd -m appuser && chown -R appuser:appuser /app
-USER appuser
-
-# Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
     PORT=5000
 
-# Expose port
+WORKDIR /app
+
+# curl is only needed for the HEALTHCHECK.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+COPY flipkart/ flipkart/
+COPY static/ static/
+COPY templates/ templates/
+COPY app.py .
+
+RUN useradd --create-home appuser
+USER appuser
+
 EXPOSE ${PORT}
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:${PORT}/ || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD curl -fsS http://localhost:${PORT}/health || exit 1
 
-# Run the application
-CMD ["python3", "app.py"]
+# One worker keeps per-session chat memory in a single process; threads handle concurrency.
+CMD gunicorn --workers 1 --threads 8 --timeout 120 --bind 0.0.0.0:${PORT} "app:create_app()"
