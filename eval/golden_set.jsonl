@@ -1,0 +1,15 @@
+{"id": "bass-1", "question": "Which earbuds have the best bass?", "relevant_keywords": ["bass"], "in_scope": true}
+{"id": "battery-1", "question": "Which headphones have the longest battery life?", "relevant_keywords": ["battery", "backup", "charge", "hours"], "in_scope": true}
+{"id": "budget-1", "question": "What is a good budget option that is value for money?", "relevant_keywords": ["value for money", "budget", "price", "cheap", "worth"], "in_scope": true}
+{"id": "mic-1", "question": "I take a lot of calls. Which product has a good microphone?", "relevant_keywords": ["mic", "call", "voice"], "in_scope": true}
+{"id": "comfort-1", "question": "Are any of these comfortable to wear for long hours?", "relevant_keywords": ["comfort", "fit", "ear", "wear"], "in_scope": true}
+{"id": "noise-1", "question": "Do any headphones block outside noise well?", "relevant_keywords": ["noise", "cancel", "isolation"], "in_scope": true}
+{"id": "connect-1", "question": "Which earbuds have reliable bluetooth connectivity?", "relevant_keywords": ["bluetooth", "connect", "pair"], "in_scope": true}
+{"id": "build-1", "question": "Which products do people say have poor build quality?", "relevant_keywords": ["build", "quality", "broke", "cheap", "plastic"], "in_scope": true}
+{"id": "sound-1", "question": "Which earphones have the clearest sound for music?", "relevant_keywords": ["sound", "music", "clarity", "clear", "audio"], "in_scope": true}
+{"id": "gaming-1", "question": "Are there earbuds with low latency for gaming?", "relevant_keywords": ["gaming", "latency", "lag", "delay"], "in_scope": true}
+{"id": "complaint-1", "question": "What do customers complain about most?", "relevant_keywords": ["bad", "worst", "poor", "problem", "issue", "not"], "in_scope": true}
+{"id": "gym-1", "question": "Which earbuds are good for the gym and sweat?", "relevant_keywords": ["gym", "sweat", "workout", "running", "sport"], "in_scope": true}
+{"id": "oos-1", "question": "What is the price of a MacBook Pro in the US?", "relevant_keywords": [], "in_scope": false}
+{"id": "oos-2", "question": "Can you recommend a good refrigerator?", "relevant_keywords": [], "in_scope": false}
+{"id": "oos-3", "question": "Who won the 2011 cricket world cup?", "relevant_keywords": [], "in_scope": false}
